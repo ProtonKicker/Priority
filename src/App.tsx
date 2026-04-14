@@ -966,9 +966,9 @@ export default function App() {
               className="transition-all duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] bg-white dark:bg-[#28282e] rounded-xl flex flex-col border border-zinc-200 dark:border-zinc-800/60 relative overflow-hidden group shadow-lg shrink-0"
             >
               {/* Archive Header */}
-              <div className="p-3 flex items-center justify-between mt-1">
+              <div className={`p-3 flex items-center ${isArchivePanelExpanded ? 'justify-between' : 'justify-center'} mt-1`}>
                 <div className="flex items-center gap-2 overflow-hidden">
-                  <Archive size={18} className="text-zinc-500 dark:text-zinc-400" />
+                  <Archive size={18} className="text-zinc-500 dark:text-zinc-400 shrink-0" />
                   {isArchivePanelExpanded && (
                     <>
                       <span className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">Archive</span>
@@ -1044,14 +1044,14 @@ export default function App() {
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button
                             onClick={() => restoreTask(task.id)}
-                            className="p-1.5 text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md transition-all"
+                            className="flex items-center justify-center p-1.5 text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md transition-all"
                             title="Restore Task"
                           >
                             <ArchiveRestore size={14} />
                           </button>
                           <button
                             onClick={() => deleteFromArchive(task.id)}
-                            className="p-1.5 text-zinc-400 dark:text-zinc-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-400/10 rounded-md transition-all"
+                            className="flex items-center justify-center p-1.5 text-zinc-400 dark:text-zinc-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-400/10 rounded-md transition-all"
                             title="Delete Permanently"
                           >
                             <Trash2 size={14} />
