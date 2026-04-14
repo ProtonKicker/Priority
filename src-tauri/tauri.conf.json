@@ -1,0 +1,26 @@
+{
+  "package": {
+    "productName": "Priority",
+    "version": "0.1.0"
+  },
+  "build": {
+    "beforeBuildCommand": "npm run build",
+    "beforeDevCommand": "npm run dev",
+    "devPath": "http://localhost:1420",
+    "distDir": "../dist"
+  },
+  "tauri": {
+    "allowlist": {
+      "all": false
+    },
+    "windows": [
+      {
+        "title": "Priority",
+        "width": 1000,
+        "height": 600,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ]
+  }
+}
