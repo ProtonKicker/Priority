@@ -831,12 +831,12 @@ export default function App() {
           {/* Settings Area at bottom */}
           <div className="p-2 mt-auto space-y-1">
              <button
-               onClick={() => setIsShortcutsOpen(true)}
-               className={`w-full flex items-center ${isSidebarExpanded ? 'justify-start px-3' : 'justify-center'} py-2.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/40 hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors`}
-             >
-                <Search size={16} />
+                onClick={() => setIsShortcutsOpen(true)}
+                className={`w-full flex items-center ${isSidebarExpanded ? 'justify-start px-3' : 'justify-center'} py-2.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/40 hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors`}
+              >
+                <Zap size={16} />
                 {isSidebarExpanded && <span className="ml-3 text-sm font-medium">Shortcuts</span>}
-             </button>
+              </button>
              <button
                onClick={() => setIsSettingsOpen(true)}
                className={`w-full flex items-center ${isSidebarExpanded ? 'justify-start px-3' : 'justify-center'} py-2.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/40 hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors`}
@@ -967,15 +967,15 @@ export default function App() {
             >
               {/* Archive Header */}
               <div className={`p-3 flex items-center ${isArchivePanelExpanded ? 'justify-between' : 'justify-center'} mt-1`}>
-                <div className="flex items-center gap-2 overflow-hidden">
-                  <Archive size={18} className="text-zinc-500 dark:text-zinc-400 shrink-0" />
-                  {isArchivePanelExpanded && (
-                    <>
-                      <span className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">Archive</span>
-                      <span className="text-xs text-zinc-400 dark:text-zinc-500">({archivedTasksForCurrentWorkspace.length})</span>
-                    </>
-                  )}
-                </div>
+            <div className="flex items-center gap-2 overflow-hidden">
+              <Folder size={18} className="text-zinc-500 dark:text-zinc-400 shrink-0" />
+              {isArchivePanelExpanded && (
+                <>
+                  <span className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">Archive</span>
+                  <span className="text-xs text-zinc-400 dark:text-zinc-500">({archivedTasksForCurrentWorkspace.length})</span>
+                </>
+              )}
+            </div>
                 {isArchivePanelExpanded && (
                   <div className="flex items-center gap-1">
                     <button
