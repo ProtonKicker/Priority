@@ -1243,7 +1243,7 @@ export default function App() {
                   <button
                     onClick={copyTodoItems}
                     className="p-2 text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
-                    title="Copy Tasks as Text"
+                    title="Copy tasks as bullet list"
                   >
                     <Copy size={18} />
                   </button>
