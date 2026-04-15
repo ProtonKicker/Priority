@@ -993,7 +993,7 @@ export default function App() {
                   <input
                     ref={searchRef}
                     type="text"
-                    placeholder="Search all tasks... (Ctrl+K)"
+                    placeholder="Search all tasks"
                     value={searchQuery}
                     onChange={(e) => { setSearchQuery(e.target.value); setShowSearchDropdown(true) }}
                     onFocus={() => setShowSearchDropdown(true)}
