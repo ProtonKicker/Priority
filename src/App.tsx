@@ -1197,7 +1197,7 @@ export default function App() {
                   <Plus size={16} className="text-zinc-400 dark:text-zinc-500 group-focus-within:text-zinc-600 dark:group-focus-within:text-zinc-300 transition-colors mr-2 flex-shrink-0" />
                   <textarea
                     ref={inputRef}
-                    placeholder="add a task"
+                    placeholder="Add a task"
                     value={newTaskText}
                     onChange={(e) => setNewTaskText(e.target.value)}
                     onKeyDown={(e) => {
