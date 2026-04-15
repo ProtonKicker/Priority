@@ -312,6 +312,63 @@ function DraggableTask({ task, index, moveTask, children, ...props }: DraggableT
   )
 }
 
+interface DraggableArchivedTaskProps {
+  task: any;
+  index: number;
+  moveArchivedTask: (draggedId: string, hoverId: string) => void;
+  children: React.ReactNode;
+  [key: string]: any;
+}
+
+function DraggableArchivedTask({ task, index, moveArchivedTask, children, ...props }: DraggableArchivedTaskProps) {
+  const ref = React.useRef<HTMLDivElement>(null)
+
+  const [{ isDragging }, drag] = useDrag({
+    type: 'archived-task',
+    item: { id: task.id, index },
+    collect: (monitor) => ({
+      isDragging: monitor.isDragging(),
+    }),
+  })
+
+  const [, drop] = useDrop({
+    accept: 'archived-task',
+    hover: (item: { id: string; index: number }, monitor) => {
+      if (!ref.current) return
+      const dragIndex = item.index
+      const hoverIndex = index
+
+      if (dragIndex === hoverIndex || item.id === task.id) return
+
+      const hoverBoundingRect = ref.current?.getBoundingClientRect()
+      const hoverMiddleY = (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2
+      const clientOffset = monitor.getClientOffset()
+      if (!clientOffset) return
+      const hoverClientY = clientOffset.y - hoverBoundingRect.top
+
+      if (dragIndex < hoverIndex && hoverClientY < hoverMiddleY) return
+      if (dragIndex > hoverIndex && hoverClientY > hoverMiddleY) return
+
+      moveArchivedTask(item.id, task.id)
+      item.index = hoverIndex
+    },
+  })
+
+  drag(drop(ref))
+
+  return (
+    <div
+      ref={ref as any}
+      style={{
+        opacity: isDragging ? 0.5 : 1,
+      }}
+      {...props}
+    >
+      {children}
+    </div>
+  )
+}
+
 function loadState<T>(key: string, defaultValue: T): T {
   try {
     const stored = localStorage.getItem(key)
@@ -428,6 +485,21 @@ export default function App() {
       return newTasks
     })
   }, [])
+
+  // Function to move archived tasks
+  const moveArchivedTask = React.useCallback((draggedId: string, hoverId: string) => {
+    setArchivedTasksByWorkspace((prev) => {
+      const currentArchived = prev[activeCategory] || []
+      const draggedIndex = currentArchived.findIndex(t => t.id === draggedId)
+      const hoverIndex = currentArchived.findIndex(t => t.id === hoverId)
+      if (draggedIndex === -1 || hoverIndex === -1) return prev
+
+      const newArchived = [...currentArchived]
+      const [moved] = newArchived.splice(draggedIndex, 1)
+      newArchived.splice(hoverIndex, 0, moved)
+      return { ...prev, [activeCategory]: newArchived }
+    })
+  }, [activeCategory])
 
   // Handle sidebar resize drag
   useEffect(() => {
@@ -587,9 +659,19 @@ export default function App() {
   }
 
   // Handle task edit keyboard events
-  const handleTaskEditKeyDown = (e: React.KeyboardEvent) => {
+  const handleTaskEditKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter') {
-      saveTaskEdit()
+      if (e.ctrlKey) {
+        const start = e.currentTarget.selectionStart
+        const end = e.currentTarget.selectionEnd
+        const value = e.currentTarget.value
+        setEditingTaskText(value.substring(0, start) + '\n' + value.substring(end))
+        // We can't easily reset cursor here in a controlled component without a ref or useEffect
+        // but it's better than nothing. 
+      } else {
+        e.preventDefault()
+        saveTaskEdit()
+      }
     } else if (e.key === 'Escape') {
       cancelTaskEdit()
     }
@@ -616,11 +698,13 @@ export default function App() {
 
   // Delete from archive permanently
   const deleteFromArchive = (taskId: string) => {
-    const currentArchived = archivedTasksByWorkspace[activeCategory] || []
-    setArchivedTasksByWorkspace({
-      ...archivedTasksByWorkspace,
-      [activeCategory]: currentArchived.filter(t => t.id !== taskId)
-    })
+    if (confirm('Permanently delete this archived task?')) {
+      const currentArchived = archivedTasksByWorkspace[activeCategory] || []
+      setArchivedTasksByWorkspace({
+        ...archivedTasksByWorkspace,
+        [activeCategory]: currentArchived.filter(t => t.id !== taskId)
+      })
+    }
   }
 
   // Clear all archived tasks for current workspace
@@ -809,7 +893,9 @@ export default function App() {
   }
 
   const deleteTask = (id: string) => {
-    setTasks(tasks.filter(t => t.id !== id))
+    if (confirm('Are you sure you want to delete this task?')) {
+      setTasks(tasks.filter(t => t.id !== id))
+    }
   }
 
   // Helper function to check if user is in an input field
@@ -1111,17 +1197,24 @@ export default function App() {
                   <Plus size={16} className="text-zinc-400 dark:text-zinc-500 group-focus-within:text-zinc-600 dark:group-focus-within:text-zinc-300 transition-colors mr-2 flex-shrink-0" />
                   <textarea
                     ref={inputRef}
-                    placeholder="add a task (Enter to add, Ctrl+Enter for new line)"
+                    placeholder="add a task"
                     value={newTaskText}
                     onChange={(e) => setNewTaskText(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.ctrlKey) {
-                        e.preventDefault()
-                        handleAddTask(e as any)
+                      if (e.key === 'Enter') {
+                        if (e.ctrlKey) {
+                          const start = e.currentTarget.selectionStart
+                          const end = e.currentTarget.selectionEnd
+                          const value = e.currentTarget.value
+                          setNewTaskText(value.substring(0, start) + '\n' + value.substring(end))
+                        } else {
+                          e.preventDefault()
+                          handleAddTask(e as any)
+                        }
                       }
                     }}
                     rows={1}
-                    className="w-full bg-zinc-50 dark:bg-[#1c1c20] border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 text-sm rounded-full py-1.5 pl-3 pr-16 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 focus:ring-1 focus:ring-zinc-400/50 dark:focus:ring-zinc-600/50 transition-all placeholder:text-zinc-400 dark:placeholder:text-zinc-600 resize-none"
+                    className="w-full bg-zinc-50 dark:bg-[#1c1c20] border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 text-sm rounded-full py-1.5 pl-3 pr-16 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 focus:ring-1 focus:ring-zinc-400/50 dark:focus:ring-zinc-600/50 transition-all placeholder:text-zinc-400 dark:placeholder:text-zinc-600 resize-none font-sans"
                   />
                   {newTaskText && (
                     <button type="submit" className="ml-2 px-4 py-1.5 bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-sm rounded-full transition-colors text-zinc-700 dark:text-zinc-300 font-medium flex-shrink-0">
@@ -1131,32 +1224,36 @@ export default function App() {
                 </form>
               </div>
 
-              {/* Copy Button */}
-              {activeCategory && (
-                <button
-                  onClick={copyTodoItems}
-                  className="p-2 text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
-                  title="Copy Tasks as Text"
-                >
-                  <Copy size={18} />
-                </button>
-              )}
+              {/* Spacer to push buttons to the far right corner */}
+              <div className="flex-1" />
 
-              {/* Archive Button */}
+              {/* Workspace action bar - Move back to header */}
               {activeCategory && (
-                <button
-                  onClick={archiveCompletedTasks}
-                  className="p-2 text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
-                  title="Archive Completed Tasks"
-                >
-                  <Archive size={18} />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={archiveCompletedTasks}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors border border-zinc-200 dark:border-zinc-800/60"
+                    title="Archive completed tasks"
+                  >
+                    <Archive size={14} />
+                    <span>Archive done</span>
+                  </button>
+
+                  {/* Copy Button */}
+                  <button
+                    onClick={copyTodoItems}
+                    className="p-2 text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+                    title="Copy Tasks as Text"
+                  >
+                    <Copy size={18} />
+                  </button>
+                </div>
               )}
             </header>
 
             {/* Task List */}
             <div className="flex-1 overflow-y-auto p-6 scrollbar-hide bg-gradient-to-b from-white to-zinc-50 dark:from-[#28282e] dark:to-[#202026] relative">
-              <div className="w-full space-y-1.5 pb-20 pt-4">
+              <div className="w-full space-y-1.5 pb-20 pt-2">
 
                 {filteredTasks.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-64 text-zinc-400 dark:text-zinc-500 space-y-4">
@@ -1191,17 +1288,18 @@ export default function App() {
                         </button>
 
                         {editingTaskId === task.id ? (
-                          <input
+                          <textarea
                             autoFocus
                             value={editingTaskText}
                             onChange={(e) => setEditingTaskText(e.target.value)}
                             onBlur={saveTaskEdit}
                             onKeyDown={handleTaskEditKeyDown}
-                            className="flex-1 text-sm bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded px-2 py-1 focus:outline-none focus:border-zinc-500 transition-all"
+                            className="flex-1 text-sm bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded px-2 py-1 focus:outline-none focus:border-zinc-500 transition-all resize-none overflow-hidden font-sans whitespace-pre-wrap"
+                            rows={editingTaskText.split('\n').length}
                           />
                         ) : (
                           <span
-                            className={`flex-1 text-sm transition-all duration-200 cursor-pointer ${task.completed ? 'text-zinc-400 dark:text-zinc-500 line-through' : 'text-zinc-800 dark:text-zinc-200'
+                            className={`flex-1 text-sm transition-all duration-200 cursor-pointer whitespace-pre-wrap ${task.completed ? 'text-zinc-400 dark:text-zinc-500 line-through' : 'text-zinc-800 dark:text-zinc-200'
                               }`}
                             onDoubleClick={() => startEditTask(task.id)}
                           >
@@ -1311,41 +1409,47 @@ export default function App() {
                         <p className="text-xs text-center">No archived tasks in this workspace.</p>
                       </div>
                     ) : (
-                      archivedTasksForCurrentWorkspace.map(task => (
-                        <div
+                      archivedTasksForCurrentWorkspace.map((task, index) => (
+                        <DraggableArchivedTask
                           key={task.id}
-                          className="group flex items-center gap-3 p-3 rounded-xl border bg-zinc-50 dark:bg-[#1c1c20]/50 border-transparent opacity-70"
+                          task={task}
+                          index={index}
+                          moveArchivedTask={moveArchivedTask}
                         >
-                          <CheckCircle2 size={18} className="text-zinc-400 flex-shrink-0" />
+                          <div
+                            className="group flex items-center gap-3 p-3 rounded-xl border bg-zinc-50 dark:bg-[#1c1c20]/50 border-transparent opacity-70"
+                          >
+                            <CheckCircle2 size={18} className="text-zinc-400 flex-shrink-0" />
 
-                          <div className="flex-1 min-w-0">
-                            <span className="text-sm text-zinc-400 dark:text-zinc-500 line-through block truncate">
-                              {task.text}
-                            </span>
-                            {task.archivedAt && (
-                              <span className="text-[10px] text-zinc-400 dark:text-zinc-600">
-                                Archived {new Date(task.archivedAt).toLocaleDateString()}
+                            <div className="flex-1 min-w-0">
+                              <span className="text-sm text-zinc-400 dark:text-zinc-500 line-through block truncate">
+                                {task.text}
                               </span>
-                            )}
-                          </div>
+                              {task.archivedAt && (
+                                <span className="text-[10px] text-zinc-400 dark:text-zinc-600">
+                                  Archived {new Date(task.archivedAt).toLocaleDateString()}
+                                </span>
+                              )}
+                            </div>
 
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button
-                              onClick={() => restoreTask(task.id)}
-                              className="flex items-center justify-center p-1.5 text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md transition-all"
-                              title="Restore Task"
-                            >
-                              <ArchiveRestore size={14} />
-                            </button>
-                            <button
-                              onClick={() => deleteFromArchive(task.id)}
-                              className="flex items-center justify-center p-1.5 text-zinc-400 dark:text-zinc-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-400/10 rounded-md transition-all"
-                              title="Delete Permanently"
-                            >
-                              <Trash2 size={14} />
-                            </button>
+                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button
+                                onClick={() => restoreTask(task.id)}
+                                className="flex items-center justify-center p-1.5 text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md transition-all"
+                                title="Restore Task"
+                              >
+                                <ArchiveRestore size={14} />
+                              </button>
+                              <button
+                                onClick={() => deleteFromArchive(task.id)}
+                                className="flex items-center justify-center p-1.5 text-zinc-400 dark:text-zinc-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-400/10 rounded-md transition-all"
+                                title="Delete Permanently"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
                           </div>
-                        </div>
+                        </DraggableArchivedTask>
                       ))
                     )}
                   </div>
