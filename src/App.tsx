@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
+import { DndProvider, useDrag, useDrop } from 'react-dnd'
+import { HTML5Backend } from 'react-dnd-html5-backend'
 import {
   CheckCircle2,
   Circle,
@@ -122,7 +124,8 @@ import {
   Scissors,
   Paperclip,
   Archive,
-  ArchiveRestore
+  ArchiveRestore,
+  Copy
 } from 'lucide-react'
 
 const AVAILABLE_ICONS: Record<string, any> = {
@@ -189,6 +192,100 @@ const DEFAULT_TASKS: any[] = []
 const DEFAULT_ARCHIVED_TASKS: Record<string, any[]> = {}
 const DEFAULT_THEME = 'system'
 
+interface DraggableWorkspaceProps {
+  category: any;
+  index: number;
+  moveWorkspace: (fromIndex: number, toIndex: number) => void;
+  children: React.ReactNode;
+  [key: string]: any;
+}
+
+function DraggableWorkspace({ category, index, moveWorkspace, children, ...props }: DraggableWorkspaceProps) {
+  const [{ isDragging }, drag] = useDrag({
+    type: 'workspace',
+    item: { index },
+    collect: (monitor) => ({
+      isDragging: monitor.isDragging(),
+    }),
+  })
+
+  const [{ isOver }, drop] = useDrop({
+    accept: 'workspace',
+    hover: (item: any) => {
+      if (item.index !== index) {
+        moveWorkspace(item.index, index)
+        item.index = index
+      }
+    },
+    collect: (monitor) => ({
+      isOver: monitor.isOver(),
+    }),
+  })
+
+  const ref = React.useRef<HTMLDivElement>(null)
+  const dragDropRef = drag(drop(ref))
+
+  return (
+    <div
+      ref={ref as any}
+      style={{
+        opacity: isDragging ? 0.5 : 1,
+        backgroundColor: isOver ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
+      }}
+      {...props}
+    >
+      {children}
+    </div>
+  )
+}
+
+interface DraggableTaskProps {
+  task: any;
+  index: number;
+  moveTask: (fromIndex: number, toIndex: number) => void;
+  children: React.ReactNode;
+  [key: string]: any;
+}
+
+function DraggableTask({ task, index, moveTask, children, ...props }: DraggableTaskProps) {
+  const [{ isDragging }, drag] = useDrag({
+    type: 'task',
+    item: { index },
+    collect: (monitor) => ({
+      isDragging: monitor.isDragging(),
+    }),
+  })
+
+  const [{ isOver }, drop] = useDrop({
+    accept: 'task',
+    hover: (item: any) => {
+      if (item.index !== index) {
+        moveTask(item.index, index)
+        item.index = index
+      }
+    },
+    collect: (monitor) => ({
+      isOver: monitor.isOver(),
+    }),
+  })
+
+  const ref = React.useRef<HTMLDivElement>(null)
+  const dragDropRef = drag(drop(ref))
+
+  return (
+    <div
+      ref={ref as any}
+      style={{
+        opacity: isDragging ? 0.5 : 1,
+        backgroundColor: isOver ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
+      }}
+      {...props}
+    >
+      {children}
+    </div>
+  )
+}
+
 function loadState<T>(key: string, defaultValue: T): T {
   try {
     const stored = localStorage.getItem(key)
@@ -242,6 +339,8 @@ export default function App() {
   const [editingCategoryIcon, setEditingCategoryIcon] = useState('')
 
   const [tasks, setTasks] = useState(() => loadState(STORAGE_KEY_TASKS, DEFAULT_TASKS))
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
+  const [editingTaskText, setEditingTaskText] = useState('')
   const [archivedTasksByWorkspace, setArchivedTasksByWorkspace] = useState(() => loadState(STORAGE_KEY_ARCHIVED, DEFAULT_ARCHIVED_TASKS))
 
   const [activeCategory, setActiveCategory] = useState<string>('')
@@ -257,7 +356,7 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('')
   const [showSearchDropdown, setShowSearchDropdown] = useState(false)
 
-  const inputRef = useRef<HTMLInputElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
   const isDraggingRef = useRef(false)
   const archiveDraggingRef = useRef(false)
@@ -275,6 +374,22 @@ export default function App() {
 
   const archivedTasksForCurrentWorkspace = activeCategory ? getArchivedForWorkspace(activeCategory) : []
   const showArchivePanel = archivedTasksForCurrentWorkspace.length > 0 && archivePanelWidth > 0
+
+  // Function to move workspaces
+  const moveWorkspace = (fromIndex: number, toIndex: number) => {
+    const newCategories = [...categories]
+    const [movedCategory] = newCategories.splice(fromIndex, 1)
+    newCategories.splice(toIndex, 0, movedCategory)
+    setCategories(newCategories)
+  }
+
+  // Function to move tasks
+  const moveTask = (fromIndex: number, toIndex: number) => {
+    const newTasks = [...tasks]
+    const [movedTask] = newTasks.splice(fromIndex, 1)
+    newTasks.splice(toIndex, 0, movedTask)
+    setTasks(newTasks)
+  }
 
   // Handle sidebar resize drag
   useEffect(() => {
@@ -331,9 +446,9 @@ export default function App() {
     document.body.style.pointerEvents = 'none'
   }
 
-  // Auto-select the only workspace when there's exactly one
+  // Auto-select the first workspace on launch
   useEffect(() => {
-    if (categories.length === 1 && !activeCategory) {
+    if (categories.length > 0 && !activeCategory) {
       setActiveCategory(categories[0].id)
     }
   }, [categories, activeCategory])
@@ -378,8 +493,68 @@ export default function App() {
       ...archivedTasksByWorkspace,
       [activeCategory]: [...currentArchived, ...tasksToArchive]
     })
+    // Set archive panel to collapsed state (collapsed by default when created)
+    setArchivePanelWidth(60)
+    
     // Remove from active tasks
     setTasks(tasks.filter(t => !(t.category === activeCategory && t.completed)))
+  }
+
+  // Copy todo items to clipboard in text format
+  const copyTodoItems = () => {
+    const currentTasks = tasks.filter(t => t.category === activeCategory)
+    if (currentTasks.length === 0) {
+      alert('No tasks to copy in this workspace.')
+      return
+    }
+    
+    const workspaceName = categories.find(c => c.id === activeCategory)?.name || 'Tasks'
+    const taskList = currentTasks.map(task => 
+      `${task.completed ? '✓' : '-'} ${task.text}`
+    ).join('\n')
+    
+    const copyText = `${workspaceName}:\n${taskList}`
+    
+    navigator.clipboard.writeText(copyText).then(() => {
+      alert('Tasks copied to clipboard!')
+    }).catch(() => {
+      alert('Failed to copy tasks to clipboard.')
+    })
+  }
+
+  // Edit task functions
+  const startEditTask = (taskId: string) => {
+    const task = tasks.find(t => t.id === taskId)
+    if (task) {
+      setEditingTaskId(taskId)
+      setEditingTaskText(task.text)
+    }
+  }
+
+  const saveTaskEdit = () => {
+    if (editingTaskId && editingTaskText.trim()) {
+      setTasks(tasks.map(t => 
+        t.id === editingTaskId 
+          ? { ...t, text: editingTaskText.trim() }
+          : t
+      ))
+    }
+    setEditingTaskId(null)
+    setEditingTaskText('')
+  }
+
+  const cancelTaskEdit = () => {
+    setEditingTaskId(null)
+    setEditingTaskText('')
+  }
+
+  // Handle task edit keyboard events
+  const handleTaskEditKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      saveTaskEdit()
+    } else if (e.key === 'Escape') {
+      cancelTaskEdit()
+    }
   }
 
   // Restore task from archive
@@ -434,11 +609,35 @@ export default function App() {
   const deleteCategory = (id: string, e: React.MouseEvent) => {
     e.stopPropagation()
     if (categories.find(c => c.id === id)?.isSystem) return
-    setCategories(categories.filter(c => c.id !== id))
-    // Move tasks from deleted category to first available category or empty
-    const fallbackCategory = categories.find(c => c.id !== id)?.id || ''
-    setTasks(tasks.map(t => t.category === id ? { ...t, category: fallbackCategory } : t))
-    if (activeCategory === id) setActiveCategory(fallbackCategory)
+    
+    const categoryName = categories.find(c => c.id === id)?.name || 'this workspace'
+    const tasksInCategory = tasks.filter(t => t.category === id)
+    
+    // Show confirmation popup
+    const message = tasksInCategory.length > 0 
+      ? `Are you sure you want to delete the "${categoryName}" workspace? This will permanently delete ${tasksInCategory.length} task(s) in this workspace. This cannot be undone.`
+      : `Are you sure you want to delete the "${categoryName}" workspace? This cannot be undone.`
+    
+    if (confirm(message)) {
+      // Delete the category
+      setCategories(categories.filter(c => c.id !== id))
+      
+      // Delete all tasks in the workspace
+      setTasks(tasks.filter(t => t.category !== id))
+      
+      // Delete archived tasks for this workspace
+      setArchivedTasksByWorkspace(prev => {
+        const updated = { ...prev }
+        delete updated[id]
+        return updated
+      })
+      
+      // Update active category if needed
+      if (activeCategory === id) {
+        const remainingCategories = categories.filter(c => c.id !== id)
+        setActiveCategory(remainingCategories.length > 0 ? remainingCategories[0].id : '')
+      }
+    }
   }
 
   const startEditCategory = (category: any, e: React.MouseEvent) => {
@@ -624,9 +823,10 @@ export default function App() {
   }, [isSidebarCollapsed])
 
   return (
-    <div className={actualTheme}>
-      {/* Outer "Window" background */}
-      <div className="flex h-screen w-screen bg-zinc-50 dark:bg-[#1c1c20] text-zinc-800 dark:text-zinc-200 font-sans overflow-hidden p-2 gap-2 selection:bg-zinc-300 dark:selection:bg-zinc-700 selection:text-black dark:selection:text-white transition-colors duration-300">
+    <DndProvider backend={HTML5Backend}>
+      <div className={actualTheme}>
+        {/* Outer "Window" background */}
+        <div className="flex h-screen w-screen bg-zinc-50 dark:bg-[#1c1c20] text-zinc-800 dark:text-zinc-200 font-sans overflow-hidden p-2 gap-2 selection:bg-zinc-300 dark:selection:bg-zinc-700 selection:text-black dark:selection:text-white transition-colors duration-300">
 
         {/* Sidebar / Vertical Tabs Area */}
         <aside
@@ -734,15 +934,20 @@ export default function App() {
               </div>
             )}
 
-            {categories.map(category => {
+            {categories.map((category, index) => {
               const Icon = AVAILABLE_ICONS[category.icon] || Folder
               const CurrentEditIcon = AVAILABLE_ICONS[editingCategoryIcon] || Folder
               const workspaceArchiveCount = (archivedTasksByWorkspace[category.id] || []).length
 
               return (
-                <div
+                <DraggableWorkspace
                   key={category.id}
-                  onClick={() => setActiveCategory(category.id)}
+                  category={category}
+                  index={index}
+                  moveWorkspace={moveWorkspace}
+                >
+                  <div
+                    onClick={() => setActiveCategory(category.id)}
                   className={`w-full flex items-center ${sidebarWidth > 60 ? 'justify-start px-3' : 'justify-center'} py-2.5 rounded-lg transition-all duration-200 group relative cursor-pointer ${
                     activeCategory === category.id
                       ? 'bg-zinc-100 dark:bg-zinc-800/80 text-zinc-900 dark:text-zinc-100 shadow-sm border border-zinc-200 dark:border-zinc-700/50'
@@ -814,9 +1019,9 @@ export default function App() {
                               )}
                             </div>
 
-                            {/* Badge: active/total fraction, hidden on hover */}
+                            {/* Badge: active tasks count, hidden on hover */}
                             <span className="group-hover:hidden text-[10px] font-semibold px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-900/50 text-zinc-500 border border-zinc-200 dark:border-zinc-800/50">
-                              {tasks.filter(t => t.category === category.id && !t.completed).length}/{tasks.filter(t => t.category === category.id).length}
+                              {tasks.filter(t => t.category === category.id && !t.completed).length}
                             </span>
                           </div>
                         </>
@@ -824,8 +1029,9 @@ export default function App() {
                     </div>
                   )}
                 </div>
-              )
-            })}
+              </DraggableWorkspace>
+            )
+          })}
           </div>
 
           {/* Settings Area at bottom */}
@@ -863,25 +1069,42 @@ export default function App() {
           <header className="h-14 border-b border-zinc-200 dark:border-zinc-800/60 flex items-center px-4 gap-4 bg-white/80 dark:bg-[#28282e]/80 backdrop-blur-md z-10">
 
             {/* Omnibox / Task Input */}
-            <form onSubmit={handleAddTask} className="flex-1 max-w-2xl relative group">
-               <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-                  <Plus size={16} className="text-zinc-400 dark:text-zinc-500 group-focus-within:text-zinc-600 dark:group-focus-within:text-zinc-300 transition-colors" />
-               </div>
-               <input
-                  ref={inputRef}
-                  type="text"
-                  placeholder="add a task"
-                  value={newTaskText}
-                  onChange={(e) => setNewTaskText(e.target.value)}
-                  className="w-full bg-zinc-50 dark:bg-[#1c1c20] border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 text-sm rounded-full py-1.5 pl-9 pr-16 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 focus:ring-1 focus:ring-zinc-400/50 dark:focus:ring-zinc-600/50 transition-all placeholder:text-zinc-400 dark:placeholder:text-zinc-600"
-               />
+            <div className="flex-1 max-w-2xl relative group flex items-center">
+            <form onSubmit={handleAddTask} className="relative w-full flex items-center">
+               <Plus size={16} className="text-zinc-400 dark:text-zinc-500 group-focus-within:text-zinc-600 dark:group-focus-within:text-zinc-300 transition-colors mr-2 flex-shrink-0" />
+                    <textarea
+                      ref={inputRef}
+                      placeholder="add a task (Enter to add, Ctrl+Enter for new line)"
+                      value={newTaskText}
+                      onChange={(e) => setNewTaskText(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.ctrlKey) {
+                          e.preventDefault()
+                          handleAddTask(e as any)
+                        }
+                      }}
+                      rows={1}
+                      className="w-full bg-zinc-50 dark:bg-[#1c1c20] border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 text-sm rounded-full py-1.5 pl-3 pr-16 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 focus:ring-1 focus:ring-zinc-400/50 dark:focus:ring-zinc-600/50 transition-all placeholder:text-zinc-400 dark:placeholder:text-zinc-600 resize-none"
+                    />
                {newTaskText && (
-                  <button type="submit" className="absolute inset-y-1 right-1 px-3 bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-xs rounded-full transition-colors text-zinc-700 dark:text-zinc-300 font-medium">
+                  <button type="submit" className="ml-2 px-4 py-1.5 bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-sm rounded-full transition-colors text-zinc-700 dark:text-zinc-300 font-medium flex-shrink-0">
                     Add
                   </button>
                )}
             </form>
+            </div>
 
+            {/* Copy Button */}
+            {activeCategory && (
+              <button
+                onClick={copyTodoItems}
+                className="p-2 text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+                title="Copy Tasks as Text"
+              >
+                <Copy size={18} />
+              </button>
+            )}
+            
             {/* Archive Button */}
             {activeCategory && (
               <button
@@ -906,15 +1129,20 @@ export default function App() {
                   <p className="text-sm">No tasks found. Take a deep breath.</p>
                 </div>
               ) : (
-                filteredTasks.map(task => (
-                  <div
+                filteredTasks.map((task, index) => (
+                  <DraggableTask
                     key={task.id}
-                    className={`group flex items-center gap-3 p-3 rounded-xl border transition-all duration-200 hover:shadow-md ${
-                      task.completed
-                        ? 'bg-zinc-50 dark:bg-[#1c1c20]/50 border-transparent opacity-60'
-                        : 'bg-white dark:bg-zinc-900/40 border-zinc-200 dark:border-zinc-800/40 hover:border-zinc-300 dark:hover:border-zinc-700/60 hover:bg-zinc-50 dark:hover:bg-zinc-800/40'
-                    }`}
+                    task={task}
+                    index={index}
+                    moveTask={moveTask}
                   >
+                    <div
+                      className={`group flex items-center gap-3 p-3 rounded-xl border transition-all duration-200 hover:shadow-md ${
+                        task.completed
+                          ? 'bg-zinc-50 dark:bg-[#1c1c20]/50 border-transparent opacity-60'
+                          : 'bg-white dark:bg-zinc-900/40 border-zinc-200 dark:border-zinc-800/40 hover:border-zinc-300 dark:hover:border-zinc-700/60 hover:bg-zinc-50 dark:hover:bg-zinc-800/40'
+                      }`}
+                    >
                     <button
                       onClick={() => toggleTask(task.id)}
                       className="flex-shrink-0 text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors focus:outline-none"
@@ -926,23 +1154,48 @@ export default function App() {
                       )}
                     </button>
 
-                    <span className={`flex-1 text-sm transition-all duration-200 ${
-                      task.completed ? 'text-zinc-400 dark:text-zinc-500 line-through' : 'text-zinc-800 dark:text-zinc-200'
-                    }`}>
-                      {task.text}
-                    </span>
+                    {editingTaskId === task.id ? (
+                      <input
+                        autoFocus
+                        value={editingTaskText}
+                        onChange={(e) => setEditingTaskText(e.target.value)}
+                        onBlur={saveTaskEdit}
+                        onKeyDown={handleTaskEditKeyDown}
+                        className="flex-1 text-sm bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded px-2 py-1 focus:outline-none focus:border-zinc-500 transition-all"
+                      />
+                    ) : (
+                      <span 
+                        className={`flex-1 text-sm transition-all duration-200 cursor-pointer ${
+                          task.completed ? 'text-zinc-400 dark:text-zinc-500 line-through' : 'text-zinc-800 dark:text-zinc-200'
+                        }`}
+                        onDoubleClick={() => startEditTask(task.id)}
+                      >
+                        {task.text}
+                      </span>
+                    )}
 
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {editingTaskId !== task.id && (
+                        <button
+                          onClick={() => startEditTask(task.id)}
+                          className="p-1.5 text-zinc-400 dark:text-zinc-500 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-400/10 rounded-md transition-all"
+                          title="Edit task"
+                        >
+                          <Edit2 size={14} />
+                        </button>
+                      )}
                       <button
                         onClick={() => deleteTask(task.id)}
                         className="p-1.5 text-zinc-400 dark:text-zinc-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-400/10 rounded-md transition-all"
+                        title="Delete task"
                       >
                         <Trash2 size={16} />
                       </button>
                     </div>
                   </div>
-                ))
-              )}
+                </DraggableTask>
+              ))
+            )}
             </div>
           </div>
 
@@ -1268,5 +1521,5 @@ export default function App() {
         </div>
       )}
     </div>
-  )
-}
+  </DndProvider>
+)}
