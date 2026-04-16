@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { DndProvider } from 'react-dnd'
-import { HTML5Backend } from 'react-dnd-html5-backend'
+import { TouchBackend } from 'react-dnd-touch-backend'
 import {
   CheckCircle2,
   Circle,
@@ -594,7 +594,7 @@ export default function App() {
   }, [isSidebarCollapsed])
 
   return (
-    <DndProvider backend={HTML5Backend}>
+    <DndProvider backend={TouchBackend} options={{enableMouseEvents: true}}>
       <div className={actualTheme}>
         {/* Outer "Window" background */}
         <div className="flex h-screen w-screen bg-zinc-50 dark:bg-[#1c1c20] text-zinc-800 dark:text-zinc-200 font-sans overflow-hidden p-2 gap-2 selection:bg-zinc-300 dark:selection:bg-zinc-700 selection:text-black dark:selection:text-white transition-colors duration-300">
@@ -836,32 +836,30 @@ export default function App() {
           <main className="flex-1 bg-white dark:bg-[#28282e] rounded-xl border border-zinc-200 dark:border-zinc-800/60 shadow-lg flex flex-col relative overflow-hidden transition-colors duration-300">
 
             {/* Top "Address Bar" Area */}
-            <header className="h-14 border-b border-zinc-200 dark:border-zinc-800/60 flex items-center px-4 gap-4 bg-white/80 dark:bg-[#28282e]/80 backdrop-blur-md z-10">
+            <header className="min-h-[3.5rem] border-b border-zinc-200 dark:border-zinc-800/60 flex items-center px-4 gap-4 bg-white/80 dark:bg-[#28282e]/80 backdrop-blur-md z-10" style={{ height: `${Math.max(3.5, newTaskText.split('\n').length * 1.5 + 2)}rem` }}>
 
               {/* Omnibox / Task Input */}
-              <div className="flex-1 max-w-2xl relative group flex items-center">
+              <div className="flex-1 max-w-4xl relative group flex items-center">
                 <form onSubmit={handleAddTask} className="relative w-full flex items-center">
-                  <Plus size={16} className="text-zinc-400 dark:text-zinc-500 group-focus-within:text-zinc-600 dark:group-focus-within:text-zinc-300 transition-colors mr-2 flex-shrink-0" />
+                  {!newTaskText && <Plus size={16} className="text-zinc-400 dark:text-zinc-500 group-focus-within:text-zinc-600 dark:group-focus-within:text-zinc-300 transition-colors mr-2 flex-shrink-0" />}
                   <textarea
                     ref={inputRef}
                     placeholder="Add a task"
                     value={newTaskText}
                     onChange={(e) => setNewTaskText(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        if (e.ctrlKey) {
-                          const start = e.currentTarget.selectionStart
-                          const end = e.currentTarget.selectionEnd
-                          const value = e.currentTarget.value
-                          setNewTaskText(value.substring(0, start) + '\n' + value.substring(end))
-                        } else {
-                          e.preventDefault()
-                          handleAddTask(e as any)
-                        }
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault()
+                        handleAddTask(e as any)
+                      } else if (e.key === 'Enter' && e.shiftKey) {
+                        const start = e.currentTarget.selectionStart
+                        const end = e.currentTarget.selectionEnd
+                        const value = e.currentTarget.value
+                        setNewTaskText(value.substring(0, start) + '\n' + value.substring(end))
                       }
                     }}
-                    rows={1}
-                    className="w-full bg-zinc-50 dark:bg-[#1c1c20] border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 text-sm rounded-full py-1.5 pl-3 pr-16 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 focus:ring-1 focus:ring-zinc-400/50 dark:focus:ring-zinc-600/50 transition-all placeholder:text-zinc-400 dark:placeholder:text-zinc-600 resize-none font-sans"
+                    rows={Math.max(1, newTaskText.split('\n').length)}
+                    className={`w-full bg-zinc-50 dark:bg-[#1c1c20] border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 text-sm py-1 pl-3 pr-8 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 focus:ring-1 focus:ring-zinc-400/50 dark:focus:ring-zinc-600/50 transition-all placeholder:text-zinc-400 dark:placeholder:text-zinc-600 resize-none font-sans leading-tight ${newTaskText.split('\n').length > 1 ? 'rounded-lg' : 'rounded-full'}`}
                   />
                   {newTaskText && (
                     <button type="submit" className="ml-2 px-4 py-1.5 bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-sm rounded-full transition-colors text-zinc-700 dark:text-zinc-300 font-medium flex-shrink-0">
@@ -871,7 +869,7 @@ export default function App() {
                 </form>
               </div>
 
-              {/* Spacer to push buttons to the far right corner */}
+              {/* Spacer to push buttons to the right */}
               <div className="flex-1" />
 
               {/* Workspace action bar - Move back to header */}
