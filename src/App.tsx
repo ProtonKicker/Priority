@@ -230,12 +230,14 @@ export default function App() {
     saveState(STORAGE_KEY_THEME, theme)
   }, [theme])
 
-  // Auto-resize input textarea on content change
+  // Auto-resize input textarea when content wraps
   useEffect(() => {
     const textarea = inputRef.current
     if (!textarea) return
-    textarea.style.height = '0px'
-    textarea.style.height = Math.max(textarea.scrollHeight, 38) + 'px'
+    textarea.style.height = ''
+    if (textarea.scrollHeight > textarea.clientHeight) {
+      textarea.style.height = textarea.scrollHeight + 'px'
+    }
   }, [newTaskText])
 
   // Archive completed tasks in current category
@@ -527,12 +529,6 @@ export default function App() {
       setActiveCategory(newCatId)
       setNewTaskText('')
       setSidebarWidth(256)
-      setTimeout(() => {
-        if (inputRef.current) {
-          inputRef.current.style.height = '0px'
-          inputRef.current.style.height = Math.max(inputRef.current.scrollHeight, 38) + 'px'
-        }
-      }, 0)
       return
     }
 
@@ -545,12 +541,6 @@ export default function App() {
 
     setTasks([newTask, ...tasks])
     setNewTaskText('')
-    setTimeout(() => {
-      if (inputRef.current) {
-        inputRef.current.style.height = '0px'
-        inputRef.current.style.height = Math.max(inputRef.current.scrollHeight, 38) + 'px'
-      }
-    }, 0)
   }
 
   const toggleTask = (id: string) => {
@@ -888,11 +878,14 @@ export default function App() {
                   ref={inputRef}
                   placeholder="Add a task"
                   value={newTaskText}
+                  rows={Math.max(1, newTaskText.split('\n').length)}
                   onChange={(e) => {
-                      setNewTaskText(e.target.value)
-                      e.target.style.height = '0px'
+                    setNewTaskText(e.target.value)
+                    e.target.style.height = ''
+                    if (e.target.scrollHeight > e.target.clientHeight) {
                       e.target.style.height = e.target.scrollHeight + 'px'
-                    }}
+                    }
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault()
