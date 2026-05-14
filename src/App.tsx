@@ -623,7 +623,7 @@ export default function App() {
             {sidebarWidth <= 60 && (
               <button
                 onClick={() => setSidebarWidth(256)}
-                className="mx-auto mt-2 p-2 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+                className="mx-auto mt-2 mb-2 p-2 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
                 title="Expand Sidebar"
               >
                 <PanelLeftOpen size={18} />
@@ -841,7 +841,7 @@ export default function App() {
               {/* Omnibox / Task Input */}
               <div className="flex-1 max-w-4xl relative group flex items-center">
                 <form onSubmit={handleAddTask} className="relative w-full flex items-center">
-                  {!newTaskText && <Plus size={16} className="text-zinc-400 dark:text-zinc-500 group-focus-within:text-zinc-600 dark:group-focus-within:text-zinc-300 transition-colors mr-2 flex-shrink-0" />}
+
                   <textarea
                     ref={inputRef}
                     placeholder="Add a task"
@@ -852,6 +852,7 @@ export default function App() {
                         e.preventDefault()
                         handleAddTask(e as any)
                       } else if (e.key === 'Enter' && e.shiftKey) {
+                        e.preventDefault()
                         const start = e.currentTarget.selectionStart
                         const end = e.currentTarget.selectionEnd
                         const value = e.currentTarget.value
@@ -859,7 +860,7 @@ export default function App() {
                       }
                     }}
                     rows={Math.max(1, newTaskText.split('\n').length)}
-                    className={`w-full bg-zinc-50 dark:bg-[#1c1c20] border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 text-sm py-1 pl-3 pr-8 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 focus:ring-1 focus:ring-zinc-400/50 dark:focus:ring-zinc-600/50 transition-all placeholder:text-zinc-400 dark:placeholder:text-zinc-600 resize-none font-sans leading-tight ${newTaskText.split('\n').length > 1 ? 'rounded-lg' : 'rounded-full'}`}
+                    className={`w-full bg-zinc-50 dark:bg-[#1c1c20] border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 text-sm py-2.5 pl-3 pr-8 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 focus:ring-1 focus:ring-zinc-400/50 dark:focus:ring-zinc-600/50 transition-all placeholder:text-zinc-400 dark:placeholder:text-zinc-600 resize-none font-sans leading-tight ${newTaskText.split('\n').length > 1 ? 'rounded-lg' : 'rounded-full'}`}
                   />
                   {newTaskText && (
                     <button type="submit" className="ml-2 px-4 py-1.5 bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-sm rounded-full transition-colors text-zinc-700 dark:text-zinc-300 font-medium flex-shrink-0">
@@ -999,7 +1000,7 @@ export default function App() {
                 {/* Archive Header */}
                 <div className={`p-3 flex items-center ${isArchivePanelExpanded ? 'justify-between' : 'justify-center'} mt-1`}>
                   <div className="flex items-center gap-2 overflow-hidden">
-                    <Folder size={18} className="text-zinc-500 dark:text-zinc-400 shrink-0" />
+                    <ArchiveRestore size={18} className="text-zinc-500 dark:text-zinc-400 shrink-0" />
                     {isArchivePanelExpanded && (
                       <>
                         <span className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">Archive</span>
