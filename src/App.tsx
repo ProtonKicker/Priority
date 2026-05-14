@@ -230,6 +230,14 @@ export default function App() {
     saveState(STORAGE_KEY_THEME, theme)
   }, [theme])
 
+  // Auto-resize input textarea on content change
+  useEffect(() => {
+    const textarea = inputRef.current
+    if (!textarea) return
+    textarea.style.height = '0px'
+    textarea.style.height = Math.max(textarea.scrollHeight, 38) + 'px'
+  }, [newTaskText])
+
   // Archive completed tasks in current category
   const archiveCompletedTasks = () => {
     const completedInCategory = tasks.filter(t => t.category === activeCategory && t.completed)
@@ -250,8 +258,6 @@ export default function App() {
       ...archivedTasksByWorkspace,
       [activeCategory]: [...currentArchived, ...tasksToArchive]
     })
-    // Set archive panel to collapsed state (collapsed by default when created)
-    setArchivePanelWidth(60)
 
     // Remove from active tasks
     setTasks(tasks.filter(t => !(t.category === activeCategory && t.completed)))
@@ -836,70 +842,70 @@ export default function App() {
           <main className="flex-1 bg-white dark:bg-[#28282e] rounded-xl border border-zinc-200 dark:border-zinc-800/60 shadow-lg flex flex-col relative overflow-hidden transition-colors duration-300">
 
             {/* Top "Address Bar" Area */}
-            <header className="min-h-[3.5rem] border-b border-zinc-200 dark:border-zinc-800/60 flex items-center px-4 gap-4 bg-white/80 dark:bg-[#28282e]/80 backdrop-blur-md z-10" style={{ height: `${Math.max(3.5, newTaskText.split('\n').length * 1.5 + 2)}rem` }}>
-
-              {/* Omnibox / Task Input */}
-              <div className="flex-1 max-w-4xl relative group flex items-center">
-                <form onSubmit={handleAddTask} className="relative w-full flex items-center">
-
-                  <textarea
-                    ref={inputRef}
-                    placeholder="Add a task"
-                    value={newTaskText}
-                    onChange={(e) => setNewTaskText(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault()
-                        handleAddTask(e as any)
-                      } else if (e.key === 'Enter' && e.shiftKey) {
-                        e.preventDefault()
-                        const start = e.currentTarget.selectionStart
-                        const end = e.currentTarget.selectionEnd
-                        const value = e.currentTarget.value
-                        setNewTaskText(value.substring(0, start) + '\n' + value.substring(end))
-                      }
-                    }}
-                    rows={Math.max(1, newTaskText.split('\n').length)}
-                    className={`w-full bg-zinc-50 dark:bg-[#1c1c20] border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 text-sm py-2.5 pl-3 pr-8 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 focus:ring-1 focus:ring-zinc-400/50 dark:focus:ring-zinc-600/50 transition-all placeholder:text-zinc-400 dark:placeholder:text-zinc-600 resize-none font-sans leading-tight ${newTaskText.split('\n').length > 1 ? 'rounded-lg' : 'rounded-full'}`}
-                  />
-                  {newTaskText && (
-                    <button type="submit" className="ml-2 px-4 py-1.5 bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-sm rounded-full transition-colors text-zinc-700 dark:text-zinc-300 font-medium flex-shrink-0">
-                      Add
+            <header className="border-b border-zinc-200 dark:border-zinc-800/60 bg-white/80 dark:bg-[#28282e]/80 backdrop-blur-md z-10">
+              <div className="flex items-center justify-end px-4 h-10 gap-2">
+                {/* Workspace action bar */}
+                {activeCategory && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={archiveCompletedTasks}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors border border-zinc-200 dark:border-zinc-800/60"
+                      title="Archive completed tasks"
+                    >
+                      <Archive size={14} />
+                      <span>Archive done</span>
                     </button>
-                  )}
-                </form>
+
+                    {/* Copy Button */}
+                    <button
+                      onClick={copyTodoItems}
+                      className="p-2 text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+                      title="Copy tasks as bullet list"
+                    >
+                      <Copy size={18} />
+                    </button>
+                  </div>
+                )}
               </div>
-
-              {/* Spacer to push buttons to the right */}
-              <div className="flex-1" />
-
-              {/* Workspace action bar - Move back to header */}
-              {activeCategory && (
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={archiveCompletedTasks}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors border border-zinc-200 dark:border-zinc-800/60"
-                    title="Archive completed tasks"
-                  >
-                    <Archive size={14} />
-                    <span>Archive done</span>
-                  </button>
-
-                  {/* Copy Button */}
-                  <button
-                    onClick={copyTodoItems}
-                    className="p-2 text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
-                    title="Copy tasks as bullet list"
-                  >
-                    <Copy size={18} />
-                  </button>
-                </div>
-              )}
             </header>
 
+            {/* Input Bar */}
+            <div className="px-6 py-2.5 bg-white dark:bg-[#28282e] border-b border-zinc-200 dark:border-zinc-800/60">
+              <form onSubmit={handleAddTask} className="flex items-center gap-2">
+                <textarea
+                  ref={inputRef}
+                  placeholder="Add a task"
+                  value={newTaskText}
+                  onChange={(e) => {
+                      setNewTaskText(e.target.value)
+                      e.target.style.height = '0px'
+                      e.target.style.height = e.target.scrollHeight + 'px'
+                    }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault()
+                      handleAddTask(e as any)
+                    } else if (e.key === 'Enter' && e.shiftKey) {
+                      e.preventDefault()
+                      const start = e.currentTarget.selectionStart
+                      const end = e.currentTarget.selectionEnd
+                      const value = e.currentTarget.value
+                      setNewTaskText(value.substring(0, start) + '\n' + value.substring(end))
+                    }
+                  }}
+                  className={`w-full bg-zinc-50 dark:bg-[#1c1c20] border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 text-sm py-2.5 pl-3 pr-8 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 focus:ring-1 focus:ring-zinc-400/50 dark:focus:ring-zinc-600/50 transition-all placeholder:text-zinc-400 dark:placeholder:text-zinc-600 resize-none font-sans leading-tight break-words rounded-xl`}
+                />
+                {newTaskText && (
+                  <button type="submit" className="shrink-0 px-4 self-stretch flex items-center bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-sm rounded-lg transition-colors text-zinc-700 dark:text-zinc-300 font-medium">
+                    Add
+                  </button>
+                )}
+              </form>
+            </div>
+
             {/* Task List */}
-            <div className="flex-1 overflow-y-auto p-6 scrollbar-hide bg-gradient-to-b from-white to-zinc-50 dark:from-[#28282e] dark:to-[#202026] relative">
-              <div className="w-full space-y-1.5 pb-20 pt-2">
+            <div className="flex-1 overflow-y-auto px-6 pb-6 pt-2 scrollbar-hide bg-gradient-to-b from-white to-zinc-50 dark:from-[#28282e] dark:to-[#202026] relative">
+              <div className="w-full space-y-1.5 pb-20">
 
                 {filteredTasks.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-64 text-zinc-400 dark:text-zinc-500 space-y-4">
@@ -917,7 +923,7 @@ export default function App() {
                       moveTask={moveTask}
                     >
                       <div
-                        className={`group flex items-center gap-3 p-3 rounded-xl border transition-all duration-200 hover:shadow-md ${task.completed
+                        className={`group flex items-center gap-3 p-3 rounded-xl border transition-all duration-200 hover:shadow-md min-w-0 ${task.completed
                           ? 'bg-zinc-50 dark:bg-[#1c1c20]/50 border-transparent opacity-60'
                           : 'bg-white dark:bg-zinc-900/40 border-zinc-200 dark:border-zinc-800/40 hover:border-zinc-300 dark:hover:border-zinc-700/60 hover:bg-zinc-50 dark:hover:bg-zinc-800/40'
                           }`}
@@ -940,12 +946,12 @@ export default function App() {
                             onChange={(e) => setEditingTaskText(e.target.value)}
                             onBlur={saveTaskEdit}
                             onKeyDown={handleTaskEditKeyDown}
-                            className="flex-1 text-sm bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded px-2 py-1 focus:outline-none focus:border-zinc-500 transition-all resize-none overflow-hidden font-sans whitespace-pre-wrap"
+                            className="flex-1 text-sm bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded px-2 py-1 focus:outline-none focus:border-zinc-500 transition-all resize-none overflow-hidden font-sans whitespace-pre-wrap break-words min-w-0"
                             rows={editingTaskText.split('\n').length}
                           />
                         ) : (
                           <span
-                            className={`flex-1 text-sm transition-all duration-200 cursor-pointer whitespace-pre-wrap ${task.completed ? 'text-zinc-400 dark:text-zinc-500 line-through' : 'text-zinc-800 dark:text-zinc-200'
+                            className={`flex-1 text-sm transition-all duration-200 cursor-pointer whitespace-pre-wrap break-words min-w-0 ${task.completed ? 'text-zinc-400 dark:text-zinc-500 line-through' : 'text-zinc-800 dark:text-zinc-200'
                               }`}
                             onDoubleClick={() => startEditTask(task.id)}
                           >
@@ -1000,7 +1006,7 @@ export default function App() {
                 {/* Archive Header */}
                 <div className={`p-3 flex items-center ${isArchivePanelExpanded ? 'justify-between' : 'justify-center'} mt-1`}>
                   <div className="flex items-center gap-2 overflow-hidden">
-                    <ArchiveRestore size={18} className="text-zinc-500 dark:text-zinc-400 shrink-0" />
+                    <Archive size={18} className="text-zinc-500 dark:text-zinc-400 shrink-0" />
                     {isArchivePanelExpanded && (
                       <>
                         <span className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">Archive</span>
