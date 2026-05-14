@@ -527,6 +527,12 @@ export default function App() {
       setActiveCategory(newCatId)
       setNewTaskText('')
       setSidebarWidth(256)
+      setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.style.height = '0px'
+          inputRef.current.style.height = Math.max(inputRef.current.scrollHeight, 38) + 'px'
+        }
+      }, 0)
       return
     }
 
@@ -539,6 +545,12 @@ export default function App() {
 
     setTasks([newTask, ...tasks])
     setNewTaskText('')
+    setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.style.height = '0px'
+        inputRef.current.style.height = Math.max(inputRef.current.scrollHeight, 38) + 'px'
+      }
+    }, 0)
   }
 
   const toggleTask = (id: string) => {
