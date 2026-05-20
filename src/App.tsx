@@ -845,7 +845,11 @@ export default function App() {
 
             {/* Top "Address Bar" Area */}
             <header className="border-b border-zinc-200 dark:border-zinc-800/60 bg-white/80 dark:bg-[#28282e]/80 backdrop-blur-md z-10">
-              <div className="flex items-center justify-end px-4 h-10 gap-2">
+              <div className="flex items-center justify-between px-6 h-10 gap-2">
+                {/* Hint text */}
+                <span className="text-sm font-semibold text-zinc-800 dark:text-zinc-200 select-none ml-1">
+                  Enter to add a task
+                </span>
                 {/* Workspace action bar */}
                 {activeCategory && (
                   <div className="flex items-center gap-2">
@@ -876,7 +880,6 @@ export default function App() {
               <form onSubmit={handleAddTask} className="flex items-center gap-2">
                 <textarea
                   ref={inputRef}
-                  placeholder="Add a task"
                   value={newTaskText}
                   rows={Math.max(1, newTaskText.split('\n').length)}
                   onChange={(e) => {
